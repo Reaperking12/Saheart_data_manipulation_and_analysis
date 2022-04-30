@@ -1,0 +1,209 @@
+FILENAME REFFILE '/folders/myfolders/SAheart.csv';
+
+PROC IMPORT DATAFILE=REFFILE
+	DBMS=CSV
+	OUT=WORK.Saheart0;
+	GETNAMES=YES;
+RUN;
+
+PROC CONTENTS DATA=WORK.Saheart0; RUN;
+
+proc format;
+	value chdf
+    0="no" 
+		1="yes";
+run;
+
+data Saheart1;
+	set Saheart0;
+	by pid;
+	*creating labels;
+	label pid="patient id";
+	label sbp="systolic blood pressure";
+	label tobacco="cumulative tobacco";
+	label ldl="low density lipoprotein cholesterol";
+	label adiposity="the body adiposity index ";
+	label famhist="family history of heart disease";
+	label obesity="BMI scorer";
+	label alcohol="current alcohol consumption";
+	label age="age at onset";
+	label chd="response, coronary heart disease";
+	label typea="self-administered Bortner Short Rating Scale' for coronary-prone (type A) behavior";
+	label BMIG="BMI Groups";
+	length BMIG $12.;
+	*creating new variables based on logic operaters;
+	if obesity<18.5 then BMIG="Underweight";
+	if 18.5<=obesity<25.0 then BMIG="Normal";
+	if 25.0<=obesity<30 then BMIG="Overweight";
+	if obesity>=30.0 then BMIG="Obese";
+	if obesity>=30.0 then BMIGN="Obese";
+	label AlcUser="alcohol user";
+	length AlcUser $15.;
+	if alcohol>0 then AlcUser="Alcohol User";
+	if alcohol=0 then AlcUser="Sober";
+	label OldMan="Male over 35";
+	length OldMan $15.;
+	if age<=35 then OldMan="Under 35";
+	if age>35 then OldMan="Over 35";
+	label age2_new="male in the 25th precentile";
+	length age2_new $10.;
+	if .<age<=31 then age2_new="<=25th%";
+	if age>55 then age2_new=">25%";
+	label age3_new="male in the 50th precentile";
+	length age3_new $10.;
+	if .<age<=45 then age3_new="<=50th%";
+	if age>45 then age3_new=">50th%";
+	label Bortner="Pattern A or B";
+	length Bortner $20.;
+	if typea>=55 then Bortner="Pattern A";
+	if typea<55 then Bortner="Pattern B";
+	format chd chdf.;
+run;
+
+*frequency table for chd;
+title "frequency table for chd";
+proc freq data=saheart1;
+	table chd;
+run;
+
+*frequency table for family history by chd;
+title "frequency table for family history by chd";
+proc freq data=saheart1;
+	table famhist*chd;
+run;
+
+*discriptive statistic for age to get max, mean, median, interquatile range, quarter 1, and quarter 3;
+title "discriptive statistic for age to get max, mean, median, interquatile range, quarter 1, and quarter 3";
+proc means data=saheart1 n max q1 q3 mean median maxdec=2;
+	var age;
+run;
+
+*discriptive statistic for obesity to get max, mean, median, interquatile range, quarter 1, and quarter 3;
+title "discriptive statistic for obesity to get max, mean, median, interquatile range, quarter 1, and quarter 3";
+proc means data=saheart1 n max mean median qrange q1 q3 maxdec=2;
+	var obesity;
+run;
+
+*discriptive statistic for age based on family history to get max, mean, median;
+title "discriptive statistic for age based on family history to get max, mean, median";
+proc means data=saheart1 n max mean median maxdec=2;
+	class famhist;
+	var age;
+run;
+
+*frequency table for ALCuser;
+title "frequency table for ALCuser";
+proc freq data=saheart1;
+	table AlcUser;
+run;
+
+*frequency table for BMIG;
+title "frequency table for BMIG";
+proc freq data=saheart1;
+	table BMIG;
+run;
+
+*descriptive statistics for age by class BMIG to get min;
+title "descriptive statistics for age by class BMIG to get min";
+proc means data=saheart1 min;
+	class BMIG;
+	var age;
+run;
+
+*descriptive statistics for sbp to get mean;
+title "descriptive statistics for sbp to get mean";
+proc means data=saheart1 mean;
+	var sbp;
+run;
+
+*frequency table of famhist by chd where obesity is greater than or equal to 30;
+title "frequency table of famhist by chd where obesity is greater than or equal to 30";
+proc freq data=saheart1;
+	where obesity>=30.0;
+	table famhist*chd;
+run; 
+
+*frequency table of BMIG by chd;
+title "frequency table of BMIG by chd";
+proc freq data=saheart1;
+	table BMIG*chd;
+run;
+
+*Descriptive statistics to get min and max for age based on class age3_new;
+title "Descriptive statistics to get min and max for age based on class age3_new";
+proc means data=saheart1 min max;
+	class age2_new;
+	var age;
+run;
+
+*Descriptive statistics to get min max for age based on class age3_new;
+title "Descriptive statistics to get min max for age based on class age3_new";
+proc means data=saheart1 min max;
+	class age3_new;
+	var age;
+run;
+
+*Descriptive statistics to get mean for ldl based on ldl;
+title "Descriptive statistics to get mean for ldl based on ldl";
+proc means data=saheart1 n mean maxdec=2 CLM alpha=.05;
+	var ldl;
+run;
+
+*Descriptive statistics to get mean for ldl based on class BMIG and sbp;
+title "Descriptive statistics to get mean for ldl based on class BMIG and sbp";
+proc means data=saheart1 n mean maxdec=2 CLM alpha=.20;
+	class BMIG;
+	var sbp;
+run;
+
+*frequency table of oldman;
+title "frequency table of oldman";
+proc freq data=saheart1;
+	table OldMan;
+run;
+
+*frequency table of oldman by chdf;
+title "frequency table of oldman by chd";
+proc freq data=saheart1;
+	table OldMan*chd;
+run;
+
+*Descriptive statistics to get mean for ldl based on class oldman;
+title "Descriptive statistics to get mean for ldl based on class oldman";
+proc means data=saheart1 mean maxdec=2;
+	class OldMan;
+	var ldl;
+run;
+
+*Correlation graph relating to alcohol, tabacco, and obesity;
+title "Correlation graph relating to alcohol, tabacco, and obesity";
+proc corr data=saheart1;
+	var alcohol tobacco;
+
+proc corr data=saheart1;
+	var alcohol obesity;
+run;
+
+*frequency table about Bortner;
+title "frequency table about Bortner";
+proc freq data=saheart1;
+	table Bortner;
+run;
+
+*box plot of  self-administered Bortner Short Rating Scale' for coronary-prone (type A) behavior by family history of heart disease;
+proc sgplot data=saheart1; 
+title "box plot of  self-administered Bortner Short Rating Scale' for coronary-prone (type A) behavior by family history of heart disease.";
+vbox typea / category=famhist; 
+run;
+
+*scatter plot of : cumulative tobacco and systolic blood pressure among men with coronary heart disease ; 
+proc sgplot data=saheart1; 
+title "scatter plot of : cumulative tobacco and systolic blood pressure among men with coronary heart disease ";
+scatter x= sbp y=tobacco / group=chd;
+run; 
+
+*scatter plot of :cumulative tobacco and current alcohol consumption among men with BMI score of at least 30 (kg/m2) and with coronary heart disease; 
+proc sgplot data=saheart1; 
+title "scatter plot of :cumulative tobacco and current alcohol consumption among men with BMI score of at least 30 (kg/m2) and with coronary heart disease.  "; 
+scatter x= alcohol y= tobacco / group=BMIGN;
+run;
